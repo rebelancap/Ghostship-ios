@@ -55,7 +55,7 @@ defaults OFF on iOS).
      set(BUNDLE_ID "dev.net64.ghostship")
      set(SIGN_LIBRARY ON)
      set(PROJECT_ID "${BUNDLE_ID}")
-@@ -592,10 +599,119 @@
+@@ -592,10 +599,149 @@
  endif()
  
  if(${CMAKE_SYSTEM_NAME} STREQUAL "iOS")
@@ -164,6 +164,36 @@ defaults OFF on iOS).
 +        # The key changes iPhone scene behavior, so it is spliced ONLY into a
 +        # vision copy of the plist.
 +        file(READ "${CMAKE_CURRENT_SOURCE_DIR}/ios/plist.in" GS_VISION_PLIST)
++        # D18: plist.in carries the iPhone scene manifest (iOS 27 SDK launch
++        # requirement); the vision copy drops it and gets its own below.
++        string(FIND "${GS_VISION_PLIST}" "<string>SohIosSceneDelegate</string>" GS_IPHONE_MANIFEST_AT)
++        if(GS_IPHONE_MANIFEST_AT EQUAL -1)
++            message(FATAL_ERROR "D18: iPhone scene manifest not found in ios/plist.in (overlay 0004)")
++        endif()
++        string(REPLACE "	<key>UIApplicationSceneManifest</key>
++	<dict>
++		<key>UIApplicationSupportsMultipleScenes</key>
++		<false/>
++		<key>UISceneConfigurations</key>
++		<dict>
++			<key>UIWindowSceneSessionRoleApplication</key>
++			<array>
++				<dict>
++					<key>UISceneConfigurationName</key>
++					<string>Default</string>
++					<key>UISceneDelegateClassName</key>
++					<string>SohIosSceneDelegate</string>
++					<key>UISceneClassName</key>
++					<string>UIWindowScene</string>
++				</dict>
++			</array>
++		</dict>
++	</dict>
++" "" GS_VISION_PLIST "${GS_VISION_PLIST}")
++        string(FIND "${GS_VISION_PLIST}" "SohIosSceneDelegate" GS_IPHONE_MANIFEST_LEFT)
++        if(NOT GS_IPHONE_MANIFEST_LEFT EQUAL -1)
++            message(FATAL_ERROR "D18: iPhone scene manifest not stripped from the vision plist")
++        endif()
 +        string(REPLACE "</dict>
 +</plist>" "	<key>UIApplicationSceneManifest</key>
 +	<dict>
@@ -218,7 +248,7 @@ defaults OFF on iOS).
  	<key>CFBundleIdentifier</key>
  	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
  	<key>CSResourcesFileMapped</key>
-@@ -50,5 +50,30 @@
+@@ -50,5 +50,49 @@
  	</array>
  	<key>UISupportsDocumentBrowser</key>
  	<true/>
@@ -235,7 +265,7 @@ defaults OFF on iOS).
 +	<key>ITSAppUsesNonExemptEncryption</key>
 +	<false/>
 +	<key>CFBundleShortVersionString</key>
-+	<string>1.0.1</string>
++	<string>1.0.2</string>
 +	<key>CFBundleURLTypes</key>
 +	<array>
 +		<dict>
@@ -247,5 +277,24 @@ defaults OFF on iOS).
 +			</array>
 +		</dict>
 +	</array>
++	<key>UIApplicationSceneManifest</key>
++	<dict>
++		<key>UIApplicationSupportsMultipleScenes</key>
++		<false/>
++		<key>UISceneConfigurations</key>
++		<dict>
++			<key>UIWindowSceneSessionRoleApplication</key>
++			<array>
++				<dict>
++					<key>UISceneConfigurationName</key>
++					<string>Default</string>
++					<key>UISceneDelegateClassName</key>
++					<string>SohIosSceneDelegate</string>
++					<key>UISceneClassName</key>
++					<string>UIWindowScene</string>
++				</dict>
++			</array>
++		</dict>
++	</dict>
  </dict>
  </plist>

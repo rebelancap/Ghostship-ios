@@ -20,6 +20,7 @@ cmake --no-warn-unused-cli -S "$ROOT/vendor/Ghostship" -B "$BUILD" -GXcode \
     -DCMAKE_SYSTEM_NAME=iOS -DPLATFORM=OS64 \
     -DCMAKE_OSX_SYSROOT=iphoneos \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DDEPLOYMENT_TARGET=15.0 `# Xcode 27 rejects ios-cmake's default 13.0` \
     "-DSOH_REMOTE_CONSOLE=${SOH_REMOTE_CONSOLE:-ON}" \
     "-DGS_O2R_PATH=$GS_O2R" \
     "-DGS_IOS_SHELL_DIR=$ROOT/app/ios" \

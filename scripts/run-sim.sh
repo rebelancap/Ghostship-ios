@@ -5,7 +5,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/spikes/gs-sim-build/Release-iphonesimulator/Ghostship.app"
 BUNDLE_ID="com.harbourmasters.ghostship"
 SM64="$ROOT/oracle/shiphome/sm64.o2r"
-UDID="63EA2491-3304-467E-B945-E279BE6FC3BD"   # Ghostship-Air (ours alone)
+SIM_NAME="${GS_SIM_NAME:-iPhone Air}"
+UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; n=sys.argv[1]; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS-27-0' in k for x in v if x['name']==n))" "$SIM_NAME")
 
 SHOT="sim-boot"; FRESH=0; SEED=1; ENVS=()
 while [[ $# -gt 0 ]]; do

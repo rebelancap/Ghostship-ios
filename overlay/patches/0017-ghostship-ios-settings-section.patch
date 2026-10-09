@@ -6,6 +6,10 @@ Menu Scale via ScaleImGui), Advanced (Remote Console :8769).
 GHOSTSHIP-SPECIFIC: NO lock modes (SM64 = momentary everything, per-game
 policy) — the Ship of Harkinian port Double-Tap-Z row is deliberately absent, and the
 shell's Z handler is momentary-only. __IOS__-gated; oracle unchanged.
+rev3 (2026-10-08): Touch Controls gains "Always Show Menu Button"
+(gSohIos.MenuAlwaysVisible, D19 = SoH D-083) and, iPhone only, "Touch Camera
+Sensitivity" (gSohIos.TouchLookSens, drag-look for the Manual camera, overlay
+0053, D20 = SoH D-081).
 
 --- a/src/port/ui/GhostshipMenuSettings.cpp
 +++ b/src/port/ui/GhostshipMenuSettings.cpp
@@ -67,7 +71,7 @@ shell's Z handler is momentary-only. __IOS__-gated; oracle unchanged.
  #ifndef __WIIU__
      AddWidget(path, "Anti-aliasing (MSAA)", WIDGET_CVAR_SLIDER_INT)
          .CVar(CVAR_MSAA_VALUE)
-@@ -357,6 +378,120 @@
+@@ -357,6 +378,144 @@
      path.sidebarName = "Controls";
      path.column = SECTION_COLUMN_1;
      AddSidebarEntry("Settings", "Controls", 1);
@@ -113,6 +117,30 @@ shell's Z handler is momentary-only. __IOS__-gated; oracle unchanged.
 +                     .ComboMap(gsIosCurveOptions)
 +                     .Tooltip("Linear: deflection maps 1:1. Precise: finer control near the center, same maximum.")
 +                     .DefaultIndex(0));
++    // D19 (port of SoH D-083): keep the menu button on screen during gameplay
++    // too (the shell's menuButtonVisible reads this live).
++    AddWidget(path, "Always Show Menu Button", WIDGET_CVAR_CHECKBOX)
++        .CVar("gSohIos.MenuAlwaysVisible")
++        .Options(CheckboxOptions()
++                     .Tooltip("Keep the menu button on screen during gameplay instead of only at the title "
++                              "screen and pause menu.")
++                     .DefaultValue(false));
++#if !TARGET_OS_VISION
++    // D20 (overlay 0053, port of SoH D-081): touch drag-look for the Manual
++    // camera. The shell scales finger travel by this; 1.0 = one screen width
++    // -> 180 deg at the default Camera Speed.
++    AddWidget(path, "Touch Camera Sensitivity", WIDGET_CVAR_SLIDER_FLOAT)
++        .CVar("gSohIos.TouchLookSens")
++        .Options(FloatSliderOptions()
++                     .Tooltip("With the Manual camera (Enhancements > Camera), drag on an empty part of the "
++                              "screen to turn it. Higher = more turn per swipe. 1.00 = a full-width swipe turns "
++                              "180 degrees.")
++                     .ShowButtons(true)
++                     .Min(0.25f)
++                     .Max(3.0f)
++                     .Format("%.2f")
++                     .DefaultValue(1.0f));
++#endif
 +    AddWidget(path, "Customize Layout...", WIDGET_BUTTON)
 +        .Callback([](WidgetInfo& info) { CVarSetInteger("gSohIos.EditLayout", 1); })
 +        .Options(ButtonOptions().Tooltip(

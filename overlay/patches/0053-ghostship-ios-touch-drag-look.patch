@@ -1,0 +1,84 @@
+Overlay patch 0053 (D20, port of SoH D-081): TOUCH DRAG-LOOK FOR THE MANUAL CAMERA.
+
+A touch that lands on empty overlay space turns SM64's Manual (analog) camera
+by finger travel. The shell (app/ios/SohIosShell.m) owns the gesture and
+accumulates the travel in RIGHT-STICK UNITS; this patch is the game side, two
+small __IOS__-gated hunks (the desktop build is byte-for-byte unchanged):
+
+  1. game_init.c read_controller_inputs -- THE INJECTION POINT. Once per game
+     tick, after adjust_analog_stick has turned player 1's raw right stick into
+     stick2X/stick2Y (deadzone + 64 clamp), the shell's accumulated drag is
+     drained and ADDED to stick2X/stick2Y. A drag therefore is a right-stick
+     deflection proportional to drag speed, and everything downstream treats it
+     exactly like one: mode_custom_camera turns sModeOffsetYaw by
+     ANALOG_AMOUNT * stick2X/32 * CAMERA_SPEED (the port's Invert Horizontal
+     and Camera Speed apply), lakitu_zoom moves sLakituPitch from stick2Y when
+     Vertical Analog Camera is on (Invert Vertical applies), and an active
+     stick suppresses the C-button rotation as upstream intends. stick2X/Y
+     have no other consumer in this pin (only camera.c reads them; player 3's
+     copy below is unused). Added after the clamp on purpose: a fast swipe may
+     exceed full stick deflection (the shell caps one tick at 45 degrees and
+     carries the rest). Skipped during demo playback (camera.c ignores the
+     stick then anyway).
+
+     Why not the SDL right-stick axes: LUS maps SDL RIGHTX/RIGHTY to BOTH the
+     C-buttons and the N64 right stick, so driving drag-look through them would
+     fire C presses (C-up = first-person view).
+
+  2. camera.c mode_custom_camera -- INSTRUMENTATION + GATE. After the right
+     stick's yaw is applied, report the tick to the shell
+     (GsIos_ManualCamTick): it publishes sModeOffsetYaw/sLakituPitch for the
+     bridge `look` command, logs (rate-limited) when the tick carried a touch
+     delta, and its timestamp is the shell's "Manual camera live" gate -- so
+     drag-look claims empty-space touches only while the analog camera
+     actually runs (DefaultMode = Manual, or AlternateMode = Manual with R
+     toggled; never in Lakitu/Mario modes, cutscenes, C-up or cannon).
+
+Touch C-buttons are NOT masked off the right stick here (SoH 0062 masks
+them): upstream's mode_custom_camera documents that the right stick is
+commonly mapped to the C-buttons and deliberately prefers the stick, so a
+touch C swinging the Manual camera at the analog rate is the intended
+behaviour on this port (D20).
+
+
+--- a/src/game/game_init.c
++++ b/src/game/game_init.c
+@@ -592,6 +592,20 @@
+                 CALL_EVENT(ButtonPressed, controller, controller->buttonPressed);
+             }
+             adjust_analog_stick(controller);
++#ifdef __IOS__
++            /* GS_IOS (overlay 0053, D20): touch drag-look. The shell's drag,
++             * drained once per tick in right-stick units, rides player 1's
++             * stick2X/Y exactly like a right-stick deflection. */
++            if (i == 0) {
++                extern void SohIos_TouchLookDrain(float* x, float* y);
++                f32 gsTlX, gsTlY;
++                SohIos_TouchLookDrain(&gsTlX, &gsTlY);
++                if (gCurrDemoInput == NULL) {
++                    controller->stick2X += gsTlX;
++                    controller->stick2Y += gsTlY;
++                }
++            }
++#endif
+         } else { // otherwise, if the controllerData is NULL, 0 out all of the inputs.
+             controller->rawStickX = 0;
+             controller->rawStickY = 0;
+--- a/src/game/camera.c
++++ b/src/game/camera.c
+@@ -1267,6 +1267,15 @@
+     if (gPlayer1Controller->stick2X != 0 && gCurrDemoInput == NULL) {
+         sModeOffsetYaw -= ANALOG_AMOUNT * (gPlayer1Controller->stick2X / 32.0f) * CAMERA_SPEED;
+     }
++#ifdef __IOS__
++    /* GS_IOS (overlay 0053, D20): Manual-camera tick -> shell (drag-look gate,
++     * bridge `look` instruments, touch-delta proof log). */
++    {
++        extern void GsIos_ManualCamTick(float stick2X, float stick2Y, int yaw, int pitch);
++        GsIos_ManualCamTick(gPlayer1Controller->stick2X, gPlayer1Controller->stick2Y, sModeOffsetYaw,
++                            sLakituPitch);
++    }
++#endif
+ 
+     // C-button L/R rotation (fallback for keyboard users, skipped when right stick is active)
+     if (!rightStickActive) {
